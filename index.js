@@ -11,7 +11,7 @@ app.use(express.json());
 
 // mongodb
 
-const { MongoClient, ServerApiVersion } = require("mongodb");
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 
 
@@ -38,11 +38,7 @@ async function run() {
 
     const userCollection = client.db("TravelTourDB").collection("users");
     const hotelsCollection = client.db("TravelTourDB").collection("hotels");
-
-
-
-
-
+    const ordersCollection = client.db("TravelTourDB").collection("orders");
 
 
 
@@ -65,6 +61,33 @@ async function run() {
     });
 
 
+    
+      //post user
+
+      app.put("/user/:email", async (req, res) => {
+        const email = req.params.email;
+        const user = req.body;
+        const filter = { email: email };
+        const options = { upsert: true };
+        const updateDoc = {
+            $set: user,
+        };
+        const result = await userCollection.updateOne(
+            filter,
+            updateDoc,
+            options
+        );
+        const token = jwt.sign(
+            { email: email },
+            process.env.ACCESS_TOKEN_SECRET,
+            { expiresIn: "1d" }
+        );
+        res.send({ result, token });
+    });
+
+    
+
+
     //Get all Hotels
         app.get("/hotels", async (req, res) => {
           const query = {};
@@ -73,9 +96,22 @@ async function run() {
           res.send(hotels);
       });
 
+          // get hotel by id
+          app.get("/hotels/:id", async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const hotel = await hotelsCollection.findOne(query);
+            res.send(hotel);
+        });
 
 
 
+        // post new order
+        app.post("/orders", async (req, res) => {
+          const order = req.body;
+          const result = await ordersCollection.insertOne(order);
+          res.send(result);
+      });
 
 
 

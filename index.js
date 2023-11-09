@@ -75,6 +75,7 @@ async function run() {
       }
   };
 
+  //make an admin api
   app.put(
       "/user/admin/:email",
       // verifyJWT,
@@ -94,39 +95,68 @@ async function run() {
   );
 
 
+  //make an host
+  app.put(
+      "/user/host/:email",
+      // verifyJWT,
+      // verifyAdmin,
+      async (req, res) => {
+          const email = req.params.email;
+          const filter = { email: email };
+          const updateDoc = {
+              $set: { role: "host" },
+          };
+          const result = await userCollection.updateOne(
+              filter,
+              updateDoc
+          );
+          res.send(result);
+      }
+  );
 
-            app.get("/admin/:email", async (req, res) => {
-            const email = req.params.email;
-            const user = await userCollection.findOne({ email: email });
-            const isAdmin = user.role === "admin";
-            res.send({ admin: isAdmin });
-        });
 
-        app.put("/user/:email", async (req, res) => {
-            const email = req.params.email;
-            const user = req.body;
-            const filter = { email: email };
-            const options = { upsert: true };
-            const updateDoc = {
-                $set: user,
-            };
-            const result = await userCollection.updateOne(
-                filter,
-                updateDoc,
-                options
-            );
-            const token = jwt.sign(
-                { email: email },
-                process.env.ACCESS_TOKEN_SECRET,
-                { expiresIn: "1d" }
-            );
-            res.send({ result, token });
-        });
 
-        app.get("/user", async (req, res) => {
-            const users = await userCollection.find({}).toArray();
-            res.send(users);
-        });
+  app.get("/admin/:email", async (req, res) => {
+    const email = req.params.email;
+    const user = await userCollection.findOne({ email: email });
+    const isAdmin = user.role === "admin";
+    res.send({ admin: isAdmin });
+});
+
+  app.get("/host/:email", async (req, res) => {
+    const email = req.params.email;
+    const user = await userCollection.findOne({ email: email });
+    const isHost = user.role === "host";
+    res.send({ host: isHost });
+});
+
+
+
+app.put("/user/:email", async (req, res) => {
+    const email = req.params.email;
+    const user = req.body;
+    const filter = { email: email };
+    const options = { upsert: true };
+    const updateDoc = {
+        $set: user,
+    };
+    const result = await userCollection.updateOne(
+        filter,
+        updateDoc,
+        options
+    );
+    const token = jwt.sign(
+        { email: email },
+        process.env.ACCESS_TOKEN_SECRET,
+        { expiresIn: "1d" }
+    );
+    res.send({ result, token });
+});
+
+app.get("/user", async (req, res) => {
+    const users = await userCollection.find({}).toArray();
+    res.send(users);
+});
 
 
 
@@ -192,6 +222,14 @@ async function run() {
             res.send(hotel);
         });
 
+
+    //post an Hotel
+    app.post('/hotels', async(req , res) => {
+      const newItem = req.body;
+      const result = await hotelsCollection.insertOne(newItem);
+
+      res.send(result);
+    });
 
 
         // post new order

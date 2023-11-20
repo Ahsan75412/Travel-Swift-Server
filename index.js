@@ -4,6 +4,7 @@ const app = express();
 const port = process.env.PORT || 5000;
 const jwt = require('jsonwebtoken');
 require("dotenv").config();
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 // middleware
 app.use(cors());
@@ -32,7 +33,7 @@ function verifyJWT(req, res, next) {
 
 // mongodb
 
-const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+
 
 
 
@@ -60,7 +61,8 @@ async function run() {
     const userCollection = client.db("TravelTourDB").collection("users");
     const hotelsCollection = client.db("TravelTourDB").collection("hotels");
     const ordersCollection = client.db("TravelTourDB").collection("orders");
-   
+    const infoCollection = client.db("TravelTourDB").collection("info");
+
 
 
     const verifyAdmin = async (req, res, next) => {
@@ -232,16 +234,213 @@ app.get("/user", async (req, res) => {
     });
 
 
+
         // post new order
-        app.post("/orders", async (req, res) => {
-          const order = req.body;
-          const result = await ordersCollection.insertOne(order);
+      //   app.post("/orders", async (req, res) => {
+      //     const order = req.body;
+      //     const result = await ordersCollection.insertOne(order);
+      //     res.send(result);
+      // });
+
+
+
+
+
+
+    // manage hotels
+
+     //get all orders
+     app.get("/orders", verifyJWT, async (req, res) => {
+      const email = req.query.email;
+      const decodedEmail = req.decoded.email;
+      if (email === decodedEmail) {
+          const query = { email: email };
+          const cursor = ordersCollection.find(query);
+          const orders = await cursor.toArray();
+          return res.send(orders);
+      } else {
+          return res.status(403).send("Forbidden");
+      }
+  });
+  app.get("/allOrders",  async (req, res) => {  //verifyJWT,
+      const query = {};
+      const cursor = ordersCollection.find(query);
+      const orders = await cursor.toArray();
+      res.send(orders);
+  });
+
+  app.get("/orders/:id", async (req, res) => { // verifyJWT,
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const orders = await ordersCollection.findOne(query);
+      res.send(orders);
+  });
+
+  // post new order
+  app.post("/orders", async (req, res) => {
+      const order = req.body;
+      const result = await ordersCollection.insertOne(order);
+      res.send(result);
+  });
+
+  app.patch("/orders/:id", verifyJWT, async (req, res) => {
+      const id = req.params.id;
+      const payment = req.body;
+
+      const query = { _id: ObjectId(id) };
+      const updatedDoc = {
+          $set: {
+              paid: true,
+              transactionId: payment.transactionId,
+          },
+      };
+      const result = await paymentsCollection.insertOne(payment);
+      const updatedOrder = await ordersCollection.updateOne(
+          query,
+          updatedDoc
+      );
+      res.send(updatedDoc);
+  });
+
+  //approve order
+  app.put("/orders/status/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const options = { upsert: true };
+      const updateStatus = { $set: { status: "paid" } };
+      const result = await ordersCollection.updateOne(
+          query,
+          updateStatus,
+          options
+      );
+      res.json(result);
+  });
+
+
+
+
+
+  // delete a product
+
+  app.delete(
+      "/hotels/:id",
+      // verifyJWT,
+      // verifyAdmin,
+      async (req, res) => {
+          const id = req.params.id;
+          const query = { _id: new ObjectId(id) };
+          const result = await hotelsCollection.deleteOne(query);
           res.send(result);
-      });
+      }
+  );
 
 
 
 
+
+
+
+  //update a product
+  app.put("/hotels/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const options = { upsert: true };
+      const newQuantity = req.body.updatedQuantity; //TODO:
+      const newPrice = req.body.updatedPrice;
+      const result = await hotelsCollection.updateOne(
+          query,
+          {
+              $set: { availableQty: newQuantity, price: newPrice },
+          },
+          options
+      );
+      res.send(result);
+      console.log(newPrice);
+  });
+
+
+
+
+  // delete an order
+
+  app.delete("/orders/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const result = await ordersCollection.deleteOne(query);
+      res.send(result);
+  });
+
+  //add a review
+  // app.post("/reviews", async (req, res) => {
+  //     const review = req.body;
+  //     const result = await reviewCollection.insertOne(review);
+  //     res.send(result);
+  // });
+
+
+  // get all review
+  // app.get("/reviews", async (req, res) => {
+  //     const cursor = reviewCollection.find({});
+  //     const reviews = await cursor.toArray();
+  //     res.send(reviews);
+  // });
+
+
+
+  //post profile info
+  app.post("/info", async (req, res) => {
+      const review = req.body;
+      const result = await infoCollection.insertOne(review);
+      res.send(result);
+  });
+
+
+  // get info
+  app.get("/info", async (req, res) => {
+      const email = req.query.email;
+      const query = { email: email };
+      const cursor = await infoCollection.find(query);
+      const info = await cursor.toArray();
+      res.send(info);
+      console.log(cursor);
+  });
+
+
+
+
+
+
+
+  // update profile
+  app.put("/info", async (req, res) => {
+      const email = req.query.email;
+
+      const query = { email: email };
+      const options = { upsert: true };
+      const newLivesIn = req.body.updatedLivesIn;
+      const newStudyIn = req.body.updatedStudyIn;
+      const newPhone = req.body.updatedPhone;
+      const newTweeeter = req.body.updatedTweeeter;
+    //   const newGithub = req.body.updatedGithub;
+      const newFacebook = req.body.updatedFacebook;
+      const result = await infoCollection.updateOne(
+          query,
+          {
+              $set: {
+                  livesIn: newLivesIn,
+                  studyIn: newStudyIn,
+                  phone: newPhone,
+                  Tweeeter: newTweeeter,
+                //   github: newGithub,
+                  facebook: newFacebook,
+              },
+          },
+
+          options
+      );
+      res.json(result);
+      console.log(newLivesIn);
+  });
 
 
 

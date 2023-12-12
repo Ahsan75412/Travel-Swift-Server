@@ -20,14 +20,14 @@ function verifyJWT(req, res, next) {
     }
     const token = authHeader.split(" ")[1];
     jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function (err, decoded) {
-    
+
         if (err) {
             return res.status(403).send("Forbidden");
         }
         req.decoded = decoded;
 
         next();
-        console.log('hello',decoded)
+        console.log('hello', decoded)
     });
 }
 
@@ -42,11 +42,11 @@ const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
-  serverApi: {
-    version: ServerApiVersion.v1,
-    strict: true,
-    deprecationErrors: true,
-  },
+    serverApi: {
+        version: ServerApiVersion.v1,
+        strict: true,
+        deprecationErrors: true,
+    },
 });
 
 
@@ -55,52 +55,52 @@ const client = new MongoClient(uri, {
 
 
 async function run() {
-  try {
-    // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    try {
+        // Connect the client to the server	(optional starting in v4.7)
+        await client.connect();
 
-    const userCollection = client.db("TravelTourDB").collection("users");
-    const hotelsCollection = client.db("TravelTourDB").collection("hotels");
-    const ordersCollection = client.db("TravelTourDB").collection("orders");
-    const paymentsCollection = client.db("TravelTourDB").collection("payments");
-    const infoCollection = client.db("TravelTourDB").collection("info");
-    const reviewCollection = client.db("TravelTourDB").collection("review");
-
-
-
-    const verifyAdmin = async (req, res, next) => {
-      const requester = req.decoded.email;
-      const requesterAccount = await userCollection.findOne({
-          email: requester,
-      });
-      if (requesterAccount.role === "admin") {
-          next();
-      } else {
-          res.status(403).send("Forbidden");
-      }
-  };
-
-  //make an admin api
-  app.put(
-      "/user/admin/:email",
-      verifyJWT,
-      // verifyAdmin,
-      async (req, res) => {
-          const email = req.params.email;
-          const filter = { email: email };
-          const updateDoc = {
-              $set: { role: "admin" },
-          };
-          const result = await userCollection.updateOne(
-              filter,
-              updateDoc
-          );
-          res.send(result);
-      }
-  );
+        const userCollection = client.db("TravelTourDB").collection("users");
+        const hotelsCollection = client.db("TravelTourDB").collection("hotels");
+        const ordersCollection = client.db("TravelTourDB").collection("orders");
+        const paymentsCollection = client.db("TravelTourDB").collection("payments");
+        const infoCollection = client.db("TravelTourDB").collection("info");
+        const reviewCollection = client.db("TravelTourDB").collection("review");
 
 
-// payment routes
+
+        const verifyAdmin = async (req, res, next) => {
+            const requester = req.decoded.email;
+            const requesterAccount = await userCollection.findOne({
+                email: requester,
+            });
+            if (requesterAccount.role === "admin") {
+                next();
+            } else {
+                res.status(403).send("Forbidden");
+            }
+        };
+
+        //make an admin api
+        app.put(
+            "/user/admin/:email",
+            verifyJWT,
+            // verifyAdmin,
+            async (req, res) => {
+                const email = req.params.email;
+                const filter = { email: email };
+                const updateDoc = {
+                    $set: { role: "admin" },
+                };
+                const result = await userCollection.updateOne(
+                    filter,
+                    updateDoc
+                );
+                res.send(result);
+            }
+        );
+
+
+        // payment routes
         app.post("/create-payment-intent", verifyJWT, async (req, res) => {
             const products = req.body;
             const price = products.price;
@@ -115,130 +115,183 @@ async function run() {
             });
         });
 
-  //make an host
-  app.put(
-      "/user/host/:email",
-      verifyJWT,
-      // verifyAdmin,
-      async (req, res) => {
-          const email = req.params.email;
-          const filter = { email: email };
-          const updateDoc = {
-              $set: { role: "host" },
-          };
-          const result = await userCollection.updateOne(
-              filter,
-              updateDoc
-          );
-          res.send(result);
-      }
-  );
-
-
-
-  app.get("/admin/:email", async (req, res) => {
-    const email = req.params.email;
-    const user = await userCollection.findOne({ email: email });
-    const isAdmin = user.role === "admin";
-    res.send({ admin: isAdmin });
-});
-
-  app.get("/host/:email", async (req, res) => {
-    const email = req.params.email;
-    const user = await userCollection.findOne({ email: email });
-    const isHost = user.role === "host";
-    res.send({ host: isHost });
-});
-
-
-
-app.put("/user/:email", async (req, res) => {
-    const email = req.params.email;
-    const user = req.body;
-    const filter = { email: email };
-    const options = { upsert: true };
-    const updateDoc = {
-        $set: user,
-    };
-    const result = await userCollection.updateOne(
-        filter,
-        updateDoc,
-        options
-    );
-    const token = jwt.sign(
-        { email: email },
-        process.env.ACCESS_TOKEN_SECRET,
-        { expiresIn: "1d" }
-    );
-    res.send({ result, token });
-});
-
-
-
-
-app.get("/user", async (req, res) => {
-    const users = await userCollection.find({}).toArray();
-    res.send(users);
-});
-
-
-
-
-
-
-    // insert userinfo
-    app.post("/users", async (req, res) => {
-      const users = req.body;
-
-      const query = { email: users.email };
-      const existingUser = await userCollection.findOne(query);
-
-      if (existingUser) {
-        return res.send({ message: "Already exists" });
-      }
-
-      const result = await userCollection.insertOne(users);
-      res.send(result);
-    });
-
-
-    
-      //post user
-
-      app.put("/user/:email", async (req, res) => {
-        const email = req.params.email;
-        const user = req.body;
-        const filter = { email: email };
-        const options = { upsert: true };
-        const updateDoc = {
-            $set: user,
-        };
-        const result = await userCollection.updateOne(
-            filter,
-            updateDoc,
-            options
+        //make an host
+        app.put(
+            "/user/host/:email",
+            verifyJWT,
+            // verifyAdmin,
+            async (req, res) => {
+                const email = req.params.email;
+                const filter = { email: email };
+                const updateDoc = {
+                    $set: { role: "host" },
+                };
+                const result = await userCollection.updateOne(
+                    filter,
+                    updateDoc
+                );
+                res.send(result);
+            }
         );
-        const token = jwt.sign(
-            { email: email },
-            process.env.ACCESS_TOKEN_SECRET,
-            { expiresIn: "1d" }
-        );
-        res.send({ result, token });
-    });
-
-    
 
 
-    //Get all Hotels
+
+        app.get("/admin/:email", async (req, res) => {
+            const email = req.params.email;
+            const user = await userCollection.findOne({ email: email });
+            const isAdmin = user.role === "admin";
+            res.send({ admin: isAdmin });
+        });
+
+        app.get("/host/:email", async (req, res) => {
+            const email = req.params.email;
+            const user = await userCollection.findOne({ email: email });
+            const isHost = user.role === "host";
+            res.send({ host: isHost });
+        });
+
+        app.get("/my-role", verifyJWT, async (req, res) => {
+            const email = req.decoded.email;
+            const user = await userCollection.findOne({ email });
+            res.json({ role: user?.role });
+        });
+
+
+
+        app.put("/user/:email", async (req, res) => {
+            const email = req.params.email;
+            const user = req.body;
+            const filter = { email: email };
+            const options = { upsert: true };
+            const updateDoc = {
+                $set: user,
+            };
+            const result = await userCollection.updateOne(
+                filter,
+                updateDoc,
+                options
+            );
+            const token = jwt.sign(
+                { email: email },
+                process.env.ACCESS_TOKEN_SECRET,
+                { expiresIn: "1d" }
+            );
+            res.send({ result, token });
+        });
+
+
+
+
+        app.get("/user", async (req, res) => {
+            const users = await userCollection.find({}).toArray();
+            res.send(users);
+        });
+
+
+
+
+
+
+        // insert userinfo
+        app.post("/users", async (req, res) => {
+            const users = req.body;
+
+            const query = { email: users.email };
+            const existingUser = await userCollection.findOne(query);
+
+            if (existingUser) {
+                return res.send({ message: "Already exists" });
+            }
+
+            const result = await userCollection.insertOne(users);
+            res.send(result);
+        });
+
+
+
+        //post user
+
+        app.put("/user/:email", async (req, res) => {
+            const email = req.params.email;
+            const user = req.body;
+            const filter = { email: email };
+            const options = { upsert: true };
+            const updateDoc = {
+                $set: user,
+            };
+            const result = await userCollection.updateOne(
+                filter,
+                updateDoc,
+                options
+            );
+            const token = jwt.sign(
+                { email: email },
+                process.env.ACCESS_TOKEN_SECRET,
+                { expiresIn: "1d" }
+            );
+            res.send({ result, token });
+        });
+
+
+
+        //get hotels by email individual
+        // app.get("/hotels", verifyJWT, async (req, res) => {
+        //     const email = req.query.email;
+        //     console.log('query007 -> ', email)
+        //     const decodedEmail = req.decoded.email;
+        //     console.log('decode007 -> ', decodedEmail)
+        //     if (email === decodedEmail) {
+        //         return res.status(403).send("Forbidden");
+        //     }
+
+
+        //     const query = { email: email };
+        //     const cursor = hotelsCollection.find(query);
+        //     const hotels = await cursor.toArray();
+        //     return res.send(hotels);
+        // });
+
+
+
+        // app.get("/hotels",verifyJWT, async (req, res) => { //
+        //     const email = req.query.email;
+        //     const decodedEmail = req.decoded.email;
+        //     console.log(decodedEmail)
+        //     if (email === decodedEmail) {
+        //         const query = { email: email };
+        //         const cursor = hotelsCollection.find(query);
+        //         const hotels = await cursor.toArray();
+        //         return res.send(hotels);
+        //     } else {
+        //         return res.status(403).send("Forbidden");
+        //     }
+        // });
+
+
+
+
+
+
+
+        //Get all Hotels
         app.get("/hotels", async (req, res) => {
-          const query = {};
-          const cursor = hotelsCollection.find(query);
-          const hotels = await cursor.toArray();
-          res.send(hotels);
-      });
+            const searchQuery = req?.query?.search;
+            const searchType = req?.query?.type;
+            let query = {};
 
-          // get hotel by id
-          app.get("/hotels/:id", async (req, res) => {
+            if (searchQuery && searchType && searchType === 'name' || searchType === 'location') {
+                query = { [searchType]: { $regex: searchQuery, $options: 'i' } };
+            }
+            const cursor = hotelsCollection.find(query);
+            const hotels = await cursor.toArray();
+            res.send(hotels);
+        }); //  /hotels?search=ocean&type=name
+
+
+
+        
+        // get hotel by id
+        app.get("/hotels/:id", async (req, res) => {
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const hotel = await hotelsCollection.findOne(query);
@@ -246,252 +299,268 @@ app.get("/user", async (req, res) => {
         });
 
 
-    //post an Hotel
-    app.post('/hotels', async(req , res) => {
-      const newItem = req.body;
-      const result = await hotelsCollection.insertOne(newItem);
+        //post an Hotel
+        app.post('/hotels', async (req, res) => {
+            const newItem = req.body;
+            const result = await hotelsCollection.insertOne(newItem);
 
-      res.send(result);
-    });
-
-
-
-   
+            res.send(result);
+        });
 
 
-     //get all orders
-     app.get("/orders",verifyJWT, async (req, res) => { //
-        const email = req.query.email;
-        console.log(email)
-        const decodedEmail = req.decoded.email;
-        console.log(decodedEmail)
-        if (email === decodedEmail) {
-            const query = { email: email };
+        //get an hotel posted by host or admin
+
+        // app.get("/hotels", verifyJWT, async (req, res) => {
+        //     const email = req.decoded.email;
+
+        //     try {
+        //         const hotels = await hotelsCollection.find({ email }).toArray();
+        //         res.json(hotels);
+        //     } catch (error) {
+        //         console.error(error);
+        //         res.status(500).send("Internal Server Error");
+        //     }
+        // });
+
+
+
+
+
+
+
+
+
+        //get all orders
+        app.get("/orders", verifyJWT, async (req, res) => { //
+            const email = req.query.email;
+            const decodedEmail = req.decoded.email;
+            console.log(decodedEmail)
+            if (email === decodedEmail) {
+                const query = { email: email };
+                const cursor = ordersCollection.find(query);
+                const orders = await cursor.toArray();
+                return res.send(orders);
+            } else {
+                return res.status(403).send("Forbidden");
+            }
+        });
+
+
+
+
+
+
+
+        app.get("/allOrders", async (req, res) => {  //verifyJWT,
+            const query = {};
             const cursor = ordersCollection.find(query);
             const orders = await cursor.toArray();
-            return res.send(orders);
-        } else {
-            return res.status(403).send("Forbidden");
-        }
-    });
- 
+            res.send(orders);
+        });
 
-    
 
 
 
 
-  app.get("/allOrders",  async (req, res) => {  //verifyJWT,
-      const query = {};
-      const cursor = ordersCollection.find(query);
-      const orders = await cursor.toArray();
-      res.send(orders);
-  });
+        app.get("/orders/:id", async (req, res) => { // verifyJWT,
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const orders = await ordersCollection.findOne(query);
+            res.send(orders);
+        });
 
 
 
 
 
-  app.get("/orders/:id", async (req, res) => { // verifyJWT,
-      const id = req.params.id;
-      const query = { _id:new ObjectId(id) };
-      const orders = await ordersCollection.findOne(query);
-      res.send(orders);
-  });
 
+        // post new order
+        app.post("/orders", async (req, res) => {
+            const order = req.body;
+            const result = await ordersCollection.insertOne(order);
+            res.send(result);
+        });
 
 
 
 
 
-  // post new order
-  app.post("/orders", async (req, res) => {
-      const order = req.body;
-      const result = await ordersCollection.insertOne(order);
-      res.send(result);
-  });
 
+        //payment isSuccessfull!
 
+        app.patch("/orders/:id", verifyJWT, async (req, res) => {
+            const id = req.params.id;
+            const payment = req.body;
 
+            const query = { _id: new ObjectId(id) };
+            const updatedDoc = {
+                $set: {
+                    paid: true,
+                    transactionId: payment.transactionId,
+                },
+            };
+            const result = await paymentsCollection.insertOne(payment);
+            const updatedOrder = await ordersCollection.updateOne(
+                query,
+                updatedDoc
+            );
+            res.send(updatedDoc);
+        });
 
 
 
-  //payment isSuccessfull!
 
-  app.patch("/orders/:id", verifyJWT, async (req, res) => {
-      const id = req.params.id;
-      const payment = req.body;
 
-      const query = { _id: new ObjectId(id) };
-      const updatedDoc = {
-          $set: {
-              paid: true,
-              transactionId: payment.transactionId,
-          },
-      };
-      const result = await paymentsCollection.insertOne(payment);
-      const updatedOrder = await ordersCollection.updateOne(
-          query,
-          updatedDoc
-      );
-      res.send(updatedDoc);
-  });
+        //approve order
+        app.put("/orders/status/:id", async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const options = { upsert: true };
+            const updateStatus = { $set: { status: "paid" } };
+            const result = await ordersCollection.updateOne(
+                query,
+                updateStatus,
+                options
+            );
+            res.json(result);
+        });
 
 
 
+        //add a review
+        app.post("/reviews", async (req, res) => {
+            const review = req.body;
+            const result = await reviewCollection.insertOne(review);
+            res.send(result);
+        });
+        // get all review
+        app.get("/reviews", async (req, res) => {
+            const cursor = reviewCollection.find({});
+            const reviews = await cursor.toArray();
+            res.send(reviews);
+        });
 
+        // delete a product
 
-  //approve order
-  app.put("/orders/status/:id", async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: ObjectId(id) };
-      const options = { upsert: true };
-      const updateStatus = { $set: { status: "paid" } };
-      const result = await ordersCollection.updateOne(
-          query,
-          updateStatus,
-          options
-      );
-      res.json(result);
-  });
+        app.delete(
+            "/hotels/:id",
+            // verifyJWT,
+            // verifyAdmin,
+            async (req, res) => {
+                const id = req.params.id;
+                const query = { _id: new ObjectId(id) };
+                const result = await hotelsCollection.deleteOne(query);
+                res.send(result);
+            }
+        );
 
 
 
-  //add a review
-  app.post("/reviews", async (req, res) => {
-    const review = req.body;
-    const result = await reviewCollection.insertOne(review);
-    res.send(result);
-});
-// get all review
-app.get("/reviews", async (req, res) => {
-    const cursor = reviewCollection.find({});
-    const reviews = await cursor.toArray();
-    res.send(reviews);
-});      
 
-  // delete a product
 
-  app.delete(
-      "/hotels/:id",
-      // verifyJWT,
-      // verifyAdmin,
-      async (req, res) => {
-          const id = req.params.id;
-          const query = { _id: new ObjectId(id) };
-          const result = await hotelsCollection.deleteOne(query);
-          res.send(result);
-      }
-  );
 
 
+        //update a product
+        app.put("/hotels/:id", async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const options = { upsert: true };
+            const newQuantity = req.body.updatedQuantity; //TODO:
+            const newPrice = req.body.updatedPrice;
+            const result = await hotelsCollection.updateOne(
+                query,
+                {
+                    $set: { availableQty: newQuantity, price: newPrice },
+                },
+                options
+            );
+            res.send(result);
+            console.log(newPrice);
+        });
 
 
 
 
+        // delete an order
 
-  //update a product
-  app.put("/hotels/:id", async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const options = { upsert: true };
-      const newQuantity = req.body.updatedQuantity; //TODO:
-      const newPrice = req.body.updatedPrice;
-      const result = await hotelsCollection.updateOne(
-          query,
-          {
-              $set: { availableQty: newQuantity, price: newPrice },
-          },
-          options
-      );
-      res.send(result);
-      console.log(newPrice);
-  });
+        app.delete("/orders/:id", async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) };
+            const result = await ordersCollection.deleteOne(query);
+            res.send(result);
+        });
 
 
 
 
-  // delete an order
 
-  app.delete("/orders/:id", async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: ObjectId(id) };
-      const result = await ordersCollection.deleteOne(query);
-      res.send(result);
-  });
 
 
+        //post profile info
+        app.post("/info", async (req, res) => {
+            const review = req.body;
+            const result = await infoCollection.insertOne(review);
+            res.send(result);
+        });
 
 
+        // get info
+        app.get("/info", async (req, res) => {
+            const email = req.query.email;
+            const query = { email: email };
+            const cursor = await infoCollection.find(query);
+            const info = await cursor.toArray();
+            res.send(info);
+            console.log(cursor);
+        });
 
 
 
-  //post profile info
-  app.post("/info", async (req, res) => {
-      const review = req.body;
-      const result = await infoCollection.insertOne(review);
-      res.send(result);
-  });
 
+        // update profile
+        app.put("/info", async (req, res) => {
+            const email = req.query.email;
 
-  // get info
-  app.get("/info", async (req, res) => {
-      const email = req.query.email;
-      const query = { email: email };
-      const cursor = await infoCollection.find(query);
-      const info = await cursor.toArray();
-      res.send(info);
-      console.log(cursor);
-  });
+            const query = { email: email };
+            const options = { upsert: true };
+            const newLivesIn = req.body.updatedLivesIn;
+            const newStudyIn = req.body.updatedStudyIn;
+            const newPhone = req.body.updatedPhone;
+            const newTweeeter = req.body.updatedTweeeter;
+            const newFacebook = req.body.updatedFacebook;
+            const result = await infoCollection.updateOne(
+                query,
+                {
+                    $set: {
+                        livesIn: newLivesIn,
+                        studyIn: newStudyIn,
+                        phone: newPhone,
+                        Tweeeter: newTweeeter,
+                        facebook: newFacebook,
+                    },
+                },
 
+                options
+            );
+            res.json(result);
+            console.log(newLivesIn);
+        });
 
 
 
-  // update profile
-  app.put("/info", async (req, res) => { 
-      const email = req.query.email;
 
-      const query = { email: email };
-      const options = { upsert: true };
-      const newLivesIn = req.body.updatedLivesIn;
-      const newStudyIn = req.body.updatedStudyIn;
-      const newPhone = req.body.updatedPhone;
-      const newTweeeter = req.body.updatedTweeeter;
-    //   const newGithub = req.body.updatedGithub;
-      const newFacebook = req.body.updatedFacebook;
-      const result = await infoCollection.updateOne(
-          query,
-          {
-              $set: {
-                  livesIn: newLivesIn,
-                  studyIn: newStudyIn,
-                  phone: newPhone,
-                  Tweeeter: newTweeeter,
-                  facebook: newFacebook,
-              },
-          },
 
-          options
-      );
-      res.json(result);
-      console.log(newLivesIn);
-  });
 
 
-
-
-
-
-
-    // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
-  } finally {
-    // Ensures that the client will close when you finish/error
-    // await client.close();
-  }
+        // Send a ping to confirm a successful connection
+        await client.db("admin").command({ ping: 1 });
+        console.log(
+            "Pinged your deployment. You successfully connected to MongoDB!"
+        );
+    } finally {
+        // Ensures that the client will close when you finish/error
+        // await client.close();
+    }
 }
 
 
@@ -499,9 +568,9 @@ app.get("/reviews", async (req, res) => {
 run().catch(console.dir);
 
 app.get("/", (req, res) => {
-  res.send("Travel & Tour server is running");
+    res.send("Travel & Tour server is running");
 });
 
 app.listen(port, () => {
-  console.log(`Server is running on : ${port}`);
+    console.log(`Server is running on : ${port}`);
 });

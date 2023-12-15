@@ -2,14 +2,13 @@ const express = require("express");
 const cors = require("cors");
 const app = express();
 const port = process.env.PORT || 5000;
-const jwt = require('jsonwebtoken');
+const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 // middleware
 app.use(cors());
 app.use(express.json());
-
 
 //verify jWT
 
@@ -20,25 +19,19 @@ function verifyJWT(req, res, next) {
     }
     const token = authHeader.split(" ")[1];
     jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function (err, decoded) {
-
         if (err) {
             return res.status(403).send("Forbidden");
         }
         req.decoded = decoded;
 
         next();
-        console.log('hello', decoded)
+        console.log("hello", decoded);
     });
 }
-
-
 
 // mongodb
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.tb0uxuv.mongodb.net/?retryWrites=true&w=majority`;
-
-
-
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -49,11 +42,6 @@ const client = new MongoClient(uri, {
     },
 });
 
-
-
-
-
-
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
@@ -61,12 +49,11 @@ async function run() {
 
         const userCollection = client.db("TravelTourDB").collection("users");
         const hotelsCollection = client.db("TravelTourDB").collection("hotels");
+        const servicesCollection = client.db("TravelTourDB").collection("services");
         const ordersCollection = client.db("TravelTourDB").collection("orders");
         const paymentsCollection = client.db("TravelTourDB").collection("payments");
         const infoCollection = client.db("TravelTourDB").collection("info");
         const reviewCollection = client.db("TravelTourDB").collection("review");
-
-
 
         const verifyAdmin = async (req, res, next) => {
             const requester = req.decoded.email;
@@ -91,14 +78,10 @@ async function run() {
                 const updateDoc = {
                     $set: { role: "admin" },
                 };
-                const result = await userCollection.updateOne(
-                    filter,
-                    updateDoc
-                );
+                const result = await userCollection.updateOne(filter, updateDoc);
                 res.send(result);
             }
         );
-
 
         // payment routes
         app.post("/create-payment-intent", verifyJWT, async (req, res) => {
@@ -126,15 +109,10 @@ async function run() {
                 const updateDoc = {
                     $set: { role: "host" },
                 };
-                const result = await userCollection.updateOne(
-                    filter,
-                    updateDoc
-                );
+                const result = await userCollection.updateOne(filter, updateDoc);
                 res.send(result);
             }
         );
-
-
 
         app.get("/admin/:email", async (req, res) => {
             const email = req.params.email;
@@ -156,8 +134,6 @@ async function run() {
             res.json({ role: user?.role });
         });
 
-
-
         app.put("/user/:email", async (req, res) => {
             const email = req.params.email;
             const user = req.body;
@@ -166,11 +142,7 @@ async function run() {
             const updateDoc = {
                 $set: user,
             };
-            const result = await userCollection.updateOne(
-                filter,
-                updateDoc,
-                options
-            );
+            const result = await userCollection.updateOne(filter, updateDoc, options);
             const token = jwt.sign(
                 { email: email },
                 process.env.ACCESS_TOKEN_SECRET,
@@ -179,18 +151,10 @@ async function run() {
             res.send({ result, token });
         });
 
-
-
-
         app.get("/user", async (req, res) => {
             const users = await userCollection.find({}).toArray();
             res.send(users);
         });
-
-
-
-
-
 
         // insert userinfo
         app.post("/users", async (req, res) => {
@@ -207,8 +171,6 @@ async function run() {
             res.send(result);
         });
 
-
-
         //post user
 
         app.put("/user/:email", async (req, res) => {
@@ -219,11 +181,7 @@ async function run() {
             const updateDoc = {
                 $set: user,
             };
-            const result = await userCollection.updateOne(
-                filter,
-                updateDoc,
-                options
-            );
+            const result = await userCollection.updateOne(filter, updateDoc, options);
             const token = jwt.sign(
                 { email: email },
                 process.env.ACCESS_TOKEN_SECRET,
@@ -232,64 +190,23 @@ async function run() {
             res.send({ result, token });
         });
 
-
-
-        //get hotels by email individual
-        // app.get("/hotels", verifyJWT, async (req, res) => {
-        //     const email = req.query.email;
-        //     console.log('query007 -> ', email)
-        //     const decodedEmail = req.decoded.email;
-        //     console.log('decode007 -> ', decodedEmail)
-        //     if (email === decodedEmail) {
-        //         return res.status(403).send("Forbidden");
-        //     }
-
-
-        //     const query = { email: email };
-        //     const cursor = hotelsCollection.find(query);
-        //     const hotels = await cursor.toArray();
-        //     return res.send(hotels);
-        // });
-
-
-
-        // app.get("/hotels",verifyJWT, async (req, res) => { //
-        //     const email = req.query.email;
-        //     const decodedEmail = req.decoded.email;
-        //     console.log(decodedEmail)
-        //     if (email === decodedEmail) {
-        //         const query = { email: email };
-        //         const cursor = hotelsCollection.find(query);
-        //         const hotels = await cursor.toArray();
-        //         return res.send(hotels);
-        //     } else {
-        //         return res.status(403).send("Forbidden");
-        //     }
-        // });
-
-
-
-
-
-
-
         //Get all Hotels
         app.get("/hotels", async (req, res) => {
             const searchQuery = req?.query?.search;
             const searchType = req?.query?.type;
             let query = {};
 
-            if (searchQuery && searchType && searchType === 'name' || searchType === 'location') {
-                query = { [searchType]: { $regex: searchQuery, $options: 'i' } };
+            if (
+                (searchQuery && searchType && searchType === "name") ||
+                searchType === "location"
+            ) {
+                query = { [searchType]: { $regex: searchQuery, $options: "i" } };
             }
             const cursor = hotelsCollection.find(query);
             const hotels = await cursor.toArray();
             res.send(hotels);
         }); //  /hotels?search=ocean&type=name
 
-
-
-        
         // get hotel by id
         app.get("/hotels/:id", async (req, res) => {
             const id = req.params.id;
@@ -298,15 +215,46 @@ async function run() {
             res.send(hotel);
         });
 
-
         //post an Hotel
-        app.post('/hotels', async (req, res) => {
+        app.post("/hotels", async (req, res) => {
             const newItem = req.body;
             const result = await hotelsCollection.insertOne(newItem);
 
             res.send(result);
         });
 
+
+
+
+
+        // get all Services
+        app.get("/services", async (req, res) => {
+            const query = {};
+            const cursor = servicesCollection.find(query);
+            const services = await cursor.toArray();
+            res.send(services);
+        });
+
+
+
+
+        // get service by id
+        app.get("/services/:id", async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const service = await servicesCollection.findOne(query);
+            res.send(service);
+        });
+
+
+
+        //post an services
+        app.post("/services", async (req, res) => {
+            const newItem = req.body;
+            const result = await servicesCollection.insertOne(newItem);
+
+            res.send(result);
+        });
 
         //get an hotel posted by host or admin
 
@@ -322,19 +270,12 @@ async function run() {
         //     }
         // });
 
-
-
-
-
-
-
-
-
         //get all orders
-        app.get("/orders", verifyJWT, async (req, res) => { //
+        app.get("/orders", verifyJWT, async (req, res) => {
+            //
             const email = req.query.email;
             const decodedEmail = req.decoded.email;
-            console.log(decodedEmail)
+            console.log(decodedEmail);
             if (email === decodedEmail) {
                 const query = { email: email };
                 const cursor = ordersCollection.find(query);
@@ -347,11 +288,8 @@ async function run() {
 
 
 
-
-
-
-
-        app.get("/allOrders", async (req, res) => {  //verifyJWT,
+        app.get("/allOrders", async (req, res) => {
+            //verifyJWT,
             const query = {};
             const cursor = ordersCollection.find(query);
             const orders = await cursor.toArray();
@@ -361,16 +299,13 @@ async function run() {
 
 
 
-
-        app.get("/orders/:id", async (req, res) => { // verifyJWT,
+        app.get("/orders/:id", async (req, res) => {
+            // verifyJWT,
             const id = req.params.id;
             const query = { _id: new ObjectId(id) };
             const orders = await ordersCollection.findOne(query);
             res.send(orders);
         });
-
-
-
 
 
 
@@ -380,8 +315,6 @@ async function run() {
             const result = await ordersCollection.insertOne(order);
             res.send(result);
         });
-
-
 
 
 
@@ -400,13 +333,9 @@ async function run() {
                 },
             };
             const result = await paymentsCollection.insertOne(payment);
-            const updatedOrder = await ordersCollection.updateOne(
-                query,
-                updatedDoc
-            );
+            const updatedOrder = await ordersCollection.updateOne(query, updatedDoc);
             res.send(updatedDoc);
         });
-
 
 
 
@@ -427,18 +356,24 @@ async function run() {
 
 
 
+
         //add a review
         app.post("/reviews", async (req, res) => {
             const review = req.body;
             const result = await reviewCollection.insertOne(review);
             res.send(result);
         });
+
+
         // get all review
         app.get("/reviews", async (req, res) => {
             const cursor = reviewCollection.find({});
             const reviews = await cursor.toArray();
             res.send(reviews);
         });
+
+
+
 
         // delete a product
 
@@ -455,10 +390,7 @@ async function run() {
         );
 
 
-
-
-
-
+        
 
         //update a product
         app.put("/hotels/:id", async (req, res) => {
@@ -478,9 +410,6 @@ async function run() {
             console.log(newPrice);
         });
 
-
-
-
         // delete an order
 
         app.delete("/orders/:id", async (req, res) => {
@@ -490,19 +419,12 @@ async function run() {
             res.send(result);
         });
 
-
-
-
-
-
-
         //post profile info
         app.post("/info", async (req, res) => {
             const review = req.body;
             const result = await infoCollection.insertOne(review);
             res.send(result);
         });
-
 
         // get info
         app.get("/info", async (req, res) => {
@@ -513,9 +435,6 @@ async function run() {
             res.send(info);
             console.log(cursor);
         });
-
-
-
 
         // update profile
         app.put("/info", async (req, res) => {
@@ -546,12 +465,6 @@ async function run() {
             console.log(newLivesIn);
         });
 
-
-
-
-
-
-
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
         console.log(
@@ -562,8 +475,6 @@ async function run() {
         // await client.close();
     }
 }
-
-
 
 run().catch(console.dir);
 

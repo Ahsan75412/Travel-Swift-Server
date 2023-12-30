@@ -6,9 +6,18 @@ const jwt = require("jsonwebtoken");
 require("dotenv").config();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+
+
+
+
 // middleware
 app.use(cors());
 app.use(express.json());
+
+
+
+
+
 
 //verify jWT
 
@@ -29,6 +38,11 @@ function verifyJWT(req, res, next) {
     });
 }
 
+
+
+
+
+
 // mongodb
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.tb0uxuv.mongodb.net/?retryWrites=true&w=majority`;
@@ -42,6 +56,10 @@ const client = new MongoClient(uri, {
     },
 });
 
+
+
+
+
 async function run() {
     try {
         // Connect the client to the server	(optional starting in v4.7)
@@ -54,6 +72,9 @@ async function run() {
         const paymentsCollection = client.db("TravelTourDB").collection("payments");
         const infoCollection = client.db("TravelTourDB").collection("info");
         const reviewCollection = client.db("TravelTourDB").collection("review");
+        const HostReqCollection = client.db("TravelTourDB").collection("host_request");
+        const BlogCollection = client.db("TravelTourDB").collection("add_blog");
+        const subscribeCollection = client.db("TravelTourDB").collection("subscribe");
 
         const verifyAdmin = async (req, res, next) => {
             const requester = req.decoded.email;
@@ -98,6 +119,11 @@ async function run() {
             });
         });
 
+
+
+
+
+
         //make an host
         app.put(
             "/user/host/:email",
@@ -114,12 +140,26 @@ async function run() {
             }
         );
 
+
+
+
+
+
+
+
         app.get("/admin/:email", async (req, res) => {
             const email = req.params.email;
             const user = await userCollection.findOne({ email: email });
             const isAdmin = user.role === "admin";
             res.send({ admin: isAdmin });
         });
+
+
+
+
+
+
+
 
         app.get("/host/:email", async (req, res) => {
             const email = req.params.email;
@@ -128,11 +168,22 @@ async function run() {
             res.send({ host: isHost });
         });
 
+
+
+
+
+
+
         app.get("/my-role", verifyJWT, async (req, res) => {
             const email = req.decoded.email;
             const user = await userCollection.findOne({ email });
             res.json({ role: user?.role });
         });
+
+
+
+
+
 
         app.put("/user/:email", async (req, res) => {
             const email = req.params.email;
@@ -151,10 +202,20 @@ async function run() {
             res.send({ result, token });
         });
 
+
+
+
+
+
+
         app.get("/user", async (req, res) => {
             const users = await userCollection.find({}).toArray();
             res.send(users);
         });
+
+
+
+
 
         // insert userinfo
         app.post("/users", async (req, res) => {
@@ -170,6 +231,11 @@ async function run() {
             const result = await userCollection.insertOne(users);
             res.send(result);
         });
+
+
+
+
+
 
         //post user
 
@@ -190,6 +256,10 @@ async function run() {
             res.send({ result, token });
         });
 
+
+
+
+
         //Get all Hotels
         app.get("/hotels", async (req, res) => {
             const searchQuery = req?.query?.search;
@@ -207,6 +277,13 @@ async function run() {
             res.send(hotels);
         }); //  /hotels?search=ocean&type=name
 
+
+
+
+
+
+
+
         // get hotel by id
         app.get("/hotels/:id", async (req, res) => {
             const id = req.params.id;
@@ -214,6 +291,10 @@ async function run() {
             const hotel = await hotelsCollection.findOne(query);
             res.send(hotel);
         });
+
+
+
+
 
         //post an Hotel
         app.post("/hotels", async (req, res) => {
@@ -256,19 +337,46 @@ async function run() {
             res.send(result);
         });
 
-        //get an hotel posted by host or admin
 
-        // app.get("/hotels", verifyJWT, async (req, res) => {
-        //     const email = req.decoded.email;
 
-        //     try {
-        //         const hotels = await hotelsCollection.find({ email }).toArray();
-        //         res.json(hotels);
-        //     } catch (error) {
-        //         console.error(error);
-        //         res.status(500).send("Internal Server Error");
-        //     }
-        // });
+
+
+
+        app.delete("/services/:id", async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await servicesCollection.deleteOne(query);
+            res.send(result);
+        });
+
+
+
+
+
+        //update a product
+        app.put("/services/:id", async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const options = { upsert: true };
+            const newPrice = req.body.updatedPrice;
+            const result = await servicesCollection.updateOne(
+                query,
+                {
+                    $set: { price: newPrice },
+                },
+                options
+            );
+            res.send(result);
+            console.log(newPrice);
+        });
+
+
+
+
+
+
+
+
 
         //get all orders
         app.get("/orders", verifyJWT, async (req, res) => {
@@ -288,6 +396,11 @@ async function run() {
 
 
 
+
+
+
+
+
         app.get("/allOrders", async (req, res) => {
             //verifyJWT,
             const query = {};
@@ -295,6 +408,8 @@ async function run() {
             const orders = await cursor.toArray();
             res.send(orders);
         });
+
+
 
 
 
@@ -309,12 +424,19 @@ async function run() {
 
 
 
+
+
+
+
         // post new order
         app.post("/orders", async (req, res) => {
             const order = req.body;
             const result = await ordersCollection.insertOne(order);
             res.send(result);
         });
+
+
+
 
 
 
@@ -340,6 +462,10 @@ async function run() {
 
 
 
+
+
+
+
         //approve order
         app.put("/orders/status/:id", async (req, res) => {
             const id = req.params.id;
@@ -357,6 +483,24 @@ async function run() {
 
 
 
+
+
+
+        // delete an order
+
+        app.delete("/orders/:id", async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await ordersCollection.deleteOne(query);
+            res.send(result);
+        });
+
+
+
+
+
+
+
         //add a review
         app.post("/reviews", async (req, res) => {
             const review = req.body;
@@ -365,12 +509,144 @@ async function run() {
         });
 
 
+
+
+
+
         // get all review
         app.get("/reviews", async (req, res) => {
             const cursor = reviewCollection.find({});
             const reviews = await cursor.toArray();
             res.send(reviews);
         });
+
+
+
+
+
+
+
+        //add a blog
+        app.post("/add_blog", async (req, res) => {
+            const blog = req.body;
+            const result = await BlogCollection.insertOne(blog);
+            res.send(result);
+        });
+
+
+
+
+
+
+
+        // get all blog
+        app.get("/allBlog", async (req, res) => {
+            //verifyJWT,
+            const query = {};
+            const cursor = BlogCollection.find(query);
+            const result = await cursor.toArray();
+            res.send(result);
+        });
+
+
+
+
+
+
+
+
+        app.get("/allBlog/:id", async (req, res) => {
+            // verifyJWT,
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const blog = await BlogCollection.findOne(query);
+            res.send(blog);
+        });
+
+
+
+
+
+
+        //add new packages
+        app.post("/subscribe", async (req, res) => {
+            const sub = req.body;
+            const result = await subscribeCollection.insertOne(sub);
+            res.send(result);
+        });
+
+
+
+
+
+
+
+        // get all packages
+        app.get("/subscribe", async (req, res) => {
+            const query = {};
+            const cursor = subscribeCollection.find(query);
+            const result = await cursor.toArray();
+            res.send(result);
+        });
+
+
+
+
+
+
+
+        //delete an package
+        app.delete("/subscribe/:id", async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await subscribeCollection.deleteOne(query);
+            res.send(result);
+        });
+
+
+
+
+
+
+        //add a review
+        app.post("/host_request", async (req, res) => {
+            const hostReq = req.body;
+            const result = await HostReqCollection.insertOne(hostReq);
+            res.send(result);
+        });
+
+
+
+
+
+
+
+        app.get("/allHostReq", async (req, res) => {
+            //verifyJWT,
+            const query = {};
+            const cursor = HostReqCollection.find(query);
+            const result = await cursor.toArray();
+            res.send(result);
+        });
+
+
+
+
+
+
+
+
+        app.delete("/allHostReq/:id", async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await HostReqCollection.deleteOne(query);
+            res.send(result);
+        });
+
+
+
+
+
 
 
 
@@ -390,7 +666,7 @@ async function run() {
         );
 
 
-        
+
 
         //update a product
         app.put("/hotels/:id", async (req, res) => {
@@ -410,14 +686,14 @@ async function run() {
             console.log(newPrice);
         });
 
-        // delete an order
 
-        app.delete("/orders/:id", async (req, res) => {
-            const id = req.params.id;
-            const query = { _id: ObjectId(id) };
-            const result = await ordersCollection.deleteOne(query);
-            res.send(result);
-        });
+
+
+
+
+
+
+
 
         //post profile info
         app.post("/info", async (req, res) => {
@@ -425,6 +701,13 @@ async function run() {
             const result = await infoCollection.insertOne(review);
             res.send(result);
         });
+
+
+
+
+
+
+
 
         // get info
         app.get("/info", async (req, res) => {
@@ -435,6 +718,13 @@ async function run() {
             res.send(info);
             console.log(cursor);
         });
+
+
+
+
+
+
+
 
         // update profile
         app.put("/info", async (req, res) => {
@@ -464,6 +754,12 @@ async function run() {
             res.json(result);
             console.log(newLivesIn);
         });
+
+
+
+
+
+
 
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });

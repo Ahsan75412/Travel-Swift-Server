@@ -208,7 +208,7 @@ async function run() {
 
 
 
-        app.get("/user",verifyJWT, async (req, res) => {
+        app.get("/user", async (req, res) => {
             const users = await userCollection.find({}).toArray();
             res.send(users);
         });
@@ -261,7 +261,7 @@ async function run() {
 
 
         //Get all Hotels
-        app.get("/hotels",verifyJWT, async (req, res) => {
+        app.get("/hotels", async (req, res) => {
             const searchQuery = req?.query?.search;
             const searchType = req?.query?.type;
             let query = {};
@@ -309,7 +309,7 @@ async function run() {
 
 
         // get all Services
-        app.get("/services",verifyJWT, async (req, res) => {
+        app.get("/services", async (req, res) => {
             const query = {};
             const cursor = servicesCollection.find(query);
             const services = await cursor.toArray();
@@ -379,7 +379,7 @@ async function run() {
 
 
         //get all orders
-        app.get("/orders", verifyJWT, async (req, res) => {
+        app.get("/orders", async (req, res) => {
             //
             const email = req.query.email;
             const decodedEmail = req.decoded.email;
@@ -401,7 +401,7 @@ async function run() {
 
 
 
-        app.get("/allOrders",verifyJWT, async (req, res) => {
+        app.get("/allOrders", async (req, res) => {
             //verifyJWT,
             const query = {};
             const cursor = ordersCollection.find(query);
@@ -443,7 +443,7 @@ async function run() {
 
         //payment isSuccessfull!
 
-        app.patch("/orders/:id", verifyJWT, async (req, res) => {
+        app.patch("/orders/:id", async (req, res) => {
             const id = req.params.id;
             const payment = req.body;
 
